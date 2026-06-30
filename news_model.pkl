@@ -1,0 +1,162 @@
+import streamlit as st
+import easyocr
+import cv2
+import tempfile
+import os
+from PIL import Image
+
+reader = easyocr.Reader(['en'])
+
+st.header("Fake or Real News Detection")
+
+option = st.radio(
+    "Select Input Type",
+    ["Text", "Image", "Video"]
+)
+
+# -----------------------------------
+# TEXT INPUT
+# -----------------------------------
+if option == "Text":
+
+    news_text = st.text_area(
+        "Enter News Article"
+    )
+
+    if st.button("Analyze News"):
+
+        if news_text.strip() == "":
+            st.warning("Please enter text")
+
+        else:
+
+            vector = vectorizer.transform(
+                [news_text]
+            )
+
+            prediction = model.predict(vector)
+
+            if prediction[0] == 1:
+                st.success("REAL News")
+            else:
+                st.error("FAKE News")
+
+# -----------------------------------
+# IMAGE INPUT
+# -----------------------------------
+elif option == "Image":
+
+    uploaded_image = st.file_uploader(
+        "Upload News Image",
+        type=["jpg", "jpeg", "png"]
+    )
+
+    if uploaded_image is not None:
+
+        image = Image.open(uploaded_image)
+
+        st.image(
+            image,
+            caption="Uploaded Image"
+        )
+
+        if st.button("Analyze Image News"):
+
+            results = reader.readtext(
+                np.array(image),
+                detail=0
+            )
+
+            extracted_text = " ".join(results)
+
+            st.write(
+                "Extracted Text:"
+            )
+
+            st.write(extracted_text)
+
+            vector = vectorizer.transform(
+                [extracted_text]
+            )
+
+            prediction = model.predict(vector)
+
+            if prediction[0] == 1:
+                st.success("REAL News")
+            else:
+                st.error("FAKE News")
+
+# -----------------------------------
+# VIDEO INPUT
+# -----------------------------------
+elif option == "Video":
+
+    uploaded_video = st.file_uploader(
+        "Upload News Video",
+        type=["mp4", "avi", "mov"]
+    )
+
+    if uploaded_video is not None:
+
+        st.video(uploaded_video)
+
+        temp_file = tempfile.NamedTemporaryFile(
+            delete=False,
+            suffix=".mp4"
+        )
+
+        temp_file.write(
+            uploaded_video.read()
+        )
+
+        temp_file.close()
+
+        video_path = temp_file.name
+
+        cap = cv2.VideoCapture(video_path)
+
+        ret, frame = cap.read()
+
+        if ret:
+
+            st.image(
+                frame,
+                channels="BGR",
+                caption="First Frame"
+            )
+
+            results = reader.readtext(
+                frame,
+                detail=0
+            )
+
+            extracted_text = " ".join(results)
+
+            st.write(
+                "Extracted Text:"
+            )
+
+            st.write(extracted_text)
+
+            if extracted_text != "":
+
+                vector = vectorizer.transform(
+                    [extracted_text]
+                )
+
+                prediction = model.predict(
+                    vector
+                )
+
+                if prediction[0] == 1:
+                    st.success("REAL News")
+                else:
+                    st.error("FAKE News")
+
+            else:
+                st.warning(
+                    "No text detected in video"
+                )
+
+        cap.release()
+        os.remove(video_path)
